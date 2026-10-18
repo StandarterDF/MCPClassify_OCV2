@@ -1,0 +1,10 @@
+# Локальные артефакты
+tmp/
+*.log
+mcp-classify-debug.log
+
+# Node
+node_modules/
+
+# Бэкапы конфигов
+*.bak

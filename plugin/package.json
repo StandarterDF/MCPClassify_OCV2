@@ -1,0 +1,11 @@
+{
+  "name": "opencode-mcp-classify",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./tui": "./tui.tsx"
+  }
+}
