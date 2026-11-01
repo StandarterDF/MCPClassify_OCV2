@@ -19,11 +19,13 @@
 |---|---|
 | `plugin/tui.tsx` | TUI-плагин. `Plugin.define({ id, setup })`, слот `sidebar.content`. |
 | `plugin/classes.js` | Чистая логика классов: `buildClasses`, `classify`, `groupServers`. Без импортов OpenCode. |
+| `plugin/client.js` | Чистый резолвер MCP API клиента: `resolveMcpApi`, `isMcpActionAvailable`, `mcpUnavailableMessage`. Без импортов OpenCode. |
 | `plugin/index.js` | Серверная заглушка: чтобы каталог был корректным пакетом и был виден в `opencode plugin list`. Ничего не делает. |
 | `plugin/package.json` | `"type": "module"`, `main`, `exports` (`.`, `./tui`). |
 | `opencode.json` | Проектный конфиг (только `$schema`). |
 | `install.bat` | Копирует `plugin/` в глобальный каталог плагинов (Windows) и напоминает про `cli.json`. |
 | `tmp/test-classes.mjs` | Юнит-тест `classes.js` на Node. |
+| `tmp/test-client.mjs` | Юнит-тест `client.js` на Node (порядок резолва API и неполные клиенты). |
 | `README.md` | Описание, установка, настройка, проверка. |
 | `CHANGES.md` | Незакоммиченные изменения. |
 | `AGENTS.md` | Этот файл. |
@@ -67,11 +69,18 @@ OpenCode (TUI) загружает `./tui` из каталога плагина. 
 5. Свёртка узлов хранится в `context.storage.store("classes", ...)`
    (`{ [label]: false }` — свёрнут; ключ `"$mcp"` — корень) и переживает
    перезапуск TUI.
-6. Клик по строке сервера — `context.client.api.mcp.connect`/
-   `disconnect({ server, location: { directory } })` (та же API, что у
-   встроенного `/mcps`). Пока вызов в полёте — строка показывает
-   `Connecting`; список обновляется событием `mcp.status.changed`, ошибки —
-   через `context.ui.toast.show`.
+6. Клик по строке сервера подключает/отключает его через клиентскую API.
+   `resolveMcpApi(context.client)` из `plugin/client.js` выбирает API один раз
+   перед вызовом в порядке: `client.experimental.mcp` → устаревший
+   `client.mcp` → legacy `client.api.mcp` (для старых сборок V2). Вызов —
+   `connect`/`disconnect({ server, location: { directory } })`, как у
+   встроенного `/mcps`; если API нет или в ней нет нужного метода, плагин
+   показывает тост и не выполняет вызов. Пока вызов в полёте — строка
+   показывает `Connecting`. Дополнительно к событию `mcp.status.changed`
+   плагин сам опрашивает `mcp.server.invalidate` + `sync` (раз в 1.5 с),
+   поэтому пропуск события не оставляет строку в `Connecting`. Если `pending`
+   держится дольше 45 с, строка показывает `Timeout`, а клик перезапускает
+   подключение. Ошибки — через `context.ui.toast.show`.
 
 ## Почему не переименование
 
@@ -107,13 +116,15 @@ OpenCode (TUI) загружает `./tui` из каталога плагина. 
 ## Внешние зависимости
 
 Нет. TUI-плагин импортирует `@opencode/plugin/tui` и `solid-js` — их
-резолвит рантайм OpenCode. Логика классов не импортирует ничего.
+резолвит рантайм OpenCode. Логика классов и резолвер API не импортируют
+ничего.
 
 ## Архитектурные ограничения
 
 - Плагин **рисует** секцию и по клику **подключает/отключает** MCP через
-  клиентскую API (`context.client.api.mcp`). Конфиг он не меняет:
-  включение/выключение сервера — рантайм-состояние, а не правка `opencode.json`.
+  клиентскую API (`plugin/client.js`: `experimental.mcp` → `client.mcp` →
+  legacy `api.mcp`). Конфиг он не меняет: включение/выключение сервера —
+  рантайм-состояние, а не правка `opencode.json`.
 - Встроенную секцию нельзя «расширить» — только заменить/отключить. Если
   рантайм изменит id встроенного плагина, директиву отключения нужно
   поправить.

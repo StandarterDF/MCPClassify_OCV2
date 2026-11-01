@@ -22,6 +22,7 @@ if not exist "%DST%" mkdir "%DST%"
 xcopy "%SRC%\index.js" "%DST%\" /Y >nul
 xcopy "%SRC%\tui.tsx" "%DST%\" /Y >nul
 xcopy "%SRC%\classes.js" "%DST%\" /Y >nul
+xcopy "%SRC%\client.js" "%DST%\" /Y >nul
 xcopy "%SRC%\package.json" "%DST%\" /Y >nul
 
 echo [OK] Плагин установлен в: %DST%
